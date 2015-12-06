@@ -1,8 +1,13 @@
 import pandas as pd
+import sys
 from nltk.tokenize import word_tokenize
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
+import os
+
+_inputDataSetFile = 'products.csv'
+_outputResultSetFile = 'problem1Sol.csv'
 
 def predictBasedOnTheTrainingData(x_VariableList, y_VariableListOfLists, testSetList):
     import numpy as np
@@ -56,24 +61,32 @@ def textMiningUsingNltk(rawTextToBeMined):
     return stemmedList
     pass
 
-df = pd.read_csv('products.csv')
-df_problem1 = df[['_id', 'name', 'description', 'cat']]
+print 'reading input file...'
+df = pd.read_csv(_inputDataSetFile, index_col=0)
+df_problem1 = df[['name', 'description', 'cat']]
+print 'splitting train and test....'
 df_problem1_train = df_problem1[df_problem1.cat != '["uncategorised"]']
 df_problem1_test = df_problem1[df_problem1.cat == '["uncategorised"]']
+df_result_set = df_problem1_test.copy(deep=True)
 
 X_train_list = []
 Y_train_list = []
+print 'extracting features for train set....'
 for index, row in df_problem1_train.iterrows():
-	trainStr = ' '.join(row['name'].strip().split() + textMiningUsingNltk(unicode(row['description'], 'utf-8',errors='ignore')))
-	# this thie feature string 
-	print trainStr
-	X_train_list.append(trainStr.decode('utf-8'))
+	trainStr = ' '.join(textMiningUsingNltk(unicode(row['name'] + row['description'], errors='ignore')))
+	X_train_list.append(trainStr)
 	Y_train_list.append(eval(row['cat']))
-
 X_test_list = []
+print 'extracting features for test set....'
 for index, row in df_problem1_test.iterrows():
-	testStr = ' '.join(row['name'].strip().split() + textMiningUsingNltk(unicode(row['description'], 'utf-8',errors='ignore')))
-	X_test_list.append(unicode(testStr, 'utf-8', errors='ignore'))
+	testStr = ' '.join(textMiningUsingNltk(unicode(row['name'] + row['description'], errors='ignore')))
+	X_test_list.append(testStr)
 
+print "Training ...."
 predictedLabels = predictBasedOnTheTrainingData(X_train_list, Y_train_list, X_test_list)
-print predictedLabels
+print "Predicted ...."
+predictedLabels = [str(list(each)) for each in predictedLabels]
+df_result_set.drop('description', axis=1, inplace=True)
+df_result_set['cat'] = predictedLabels
+df_result_set.to_csv(_outputResultSetFile, index=True)
+print "Result Successfully Saved the predicted values to ", os.path.abspath(_outputResultSetFile)
